@@ -8,11 +8,21 @@
 'use strict';
 
 var expect = require('chai-jasmine').expect;
-var index = require('../src/index.js');
+var aliyun = require('../src/index.js');
 
 describe('测试文件', function () {
-    it('base', function () {
-        expect(index).toEqual('index');
+    it('.aliossSignature', function () {
+        var ret = aliyun.aliossSignature({
+            accessKeyId: '1',
+            accessKeySecret: '2',
+            bucket: 'test',
+            endPoint: 'oss-cn-shanghai.aliyuncs.com',
+            origin: 'https://cdn.mydomain.com',
+            dirname: '/path/to/',
+            filename: 'abc.js'
+        });
+
+        console.log(ret);
     });
 });
 

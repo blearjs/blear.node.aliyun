@@ -8,28 +8,34 @@
 'use strict';
 
 var crypto = require('crypto');
+var path = require('path');
 var random = require('blear.utils.random');
 var typeis = require('blear.utils.typeis');
-var path = require('blear.utils.path');
-var url = require('blear.utils.url');
 var object = require('blear.utils.object');
 var access = require('blear.utils.access');
+var url = require('blear.utils.url');
 var mime = require('blear.node.mime');
 
 
 var defaults = {
+    // 访问令牌
     accessKeyId: '',
+    // 访问密钥
     accessKeySecret: '',
+    // 仓库
     bucket: '',
-    host: 'oss-cn-hangzhou.aliyuncs.com',
+    // 上传地址
+    endPoint: 'oss-cn-hangzhou.aliyuncs.com',
+    // 访问控制
     cacheControl: 'public',
-    // 1年，单位 秒
+    // 静态资源有效期 1年，单位 秒
     expires: 31536000,
-    domain: '',
+    // 绑定的域（包含协议、域名和端口）
+    origin: '',
     // 保存目录
     dirname: '/',
-    // 生成资源链接协议
-    https: true
+    method: 'put',
+    headers: {}
 };
 
 exports.defaults = defaults;
@@ -53,102 +59,78 @@ exports.config = function (key, val) {
 
 
 /**
- *
+ * alioss 前面
  * @param configs {Boolean}
  * @param configs.accessKeyId {String} 访问KEY
  * @param configs.accessKeySecret {String} 访问密钥
  * @param configs.bucket {String} 仓库
- * @param configs.host {String} 仓库地址
- * @param configs.cacheControl {String}
- * @param configs.expires {String}
- * @param configs.domain {String}
- * @param configs.dirname {String}
- * @param configs.https {Boolean} 是否
+ * @param configs.endPoint {String} 上传地址
+ * @param configs.cacheControl {String} 访问控制
+ * @param configs.expires {String} 过期时间
+ * @param configs.origin {String} 绑定的域（包含协议和域名端口）
+ * @param configs.dirname {String} 上传的目录
+ * @param configs.filename {String} 上传的文件
+ * @param [configs.method="put"] {String} 自定义头信息
+ * @param configs.headers {Object} 自定义头信息
+ * @returns {{requestURL: String, objectURL: String, requestHeaders: {}}}
  */
-
-exports.signature = function (configs) {
+exports.aliossSignature = function (configs) {
     configs = object.assign({}, defaults, configs);
 
-
-};
-
-
-/**
- * 操作签名
- * @param method {String} 请求方式
- * @param [filename] {String} 文件名
- * @param [headers] {Object} 头信息
- * @returns {{url: *, headers: *}}
- */
-exports.signatureOld = function (method, filename, headers) {
-    var args = access.args(arguments);
-
-    // signature(method, headers);
-    if (args.length === 2 && typeis(args[1]) === 'object') {
-        filename = random.guid() + random.string();
-        headers = args[1];
-    }
-    // signature(method)
-    else if (args.length === 1) {
-        filename = random.guid() + random.string();
-    }
-
-    headers = headers || {};
-    var auth = 'OSS ' + defaults.accessKeyId + ':';
-    var date = headers.date || new Date().toUTCString();
-    var contentType = headers['content-type'] || mime.get(path.extname(filename));
-    var contentMD5 = headers['content-md5'] || '';
+    var date = configs.headers.date || new Date().toUTCString();
+    var extname = path.extname(configs.filename);
+    var contentType = configs.headers['content-type'] || mime.get(extname);
+    var contentMD5 = configs.headers['content-md5'] || '';
     var params = [
-        method.toUpperCase(),
+        configs.method.toUpperCase(),
         contentMD5,
         contentType,
         date
     ];
-    var object = path.join(defaults.dirname, filename);
-    var resource = '/' + path.join(defaults.bucket, object);
-    var signature;
+    var requestObject = path.join(configs.dirname, configs.filename);
+    var resource = '/' + path.join(configs.bucket, requestObject);
     var ossHeaders = {};
 
-    object.each(headers, function (key, val) {
+    object.each(configs.headers, function (key, val) {
         var lkey = key.toLowerCase().trim();
 
-        if (lkey.indexOf('x-oss-') === 0) {
+        if (/^x-oss/i.test(lkey)) {
             ossHeaders[lkey] = ossHeaders[lkey] || [];
             ossHeaders[lkey].push(val.trim());
         }
     });
-
     Object.keys(ossHeaders).sort().forEach(function (key) {
         params.push(key + ':' + ossHeaders[key].join(','));
     });
-
     params.push(resource);
-    signature = crypto.createHmac('sha1', defaults.accessKeySecret);
+    var signature = crypto.createHmac('sha1', configs.accessKeySecret);
     signature = signature.update(params.join('\n'), 'utf-8').digest('base64');
 
-    var protocol = defaults.https ? 'https://' : 'http://';
-    var originDomain = defaults.bucket + '.' + defaults.host;
-    var customDomain = defaults.domain || originDomain;
     // fix: 中文文件名的 BUG
-    object = object.split('/').map(function (item) {
+    requestObject = requestObject.split('/').map(function (item) {
         return encodeURIComponent(item);
     }).join('/');
-    var objectURL = path.joinURI(protocol, customDomain, object);
-    var requestURL = path.joinURI(protocol, originDomain, object);
 
-    object.extend(headers, {
+    var requestOrigin = 'http://' + configs.bucket + '.' + configs.endPoint;
+    var aliasOrigin = configs.origin || requestOrigin;
+    var requestURL = url.join(requestOrigin, requestObject);
+    var objectURL = url.join(aliasOrigin, requestObject);
+    var requestHeaders = {};
+
+    object.assign(requestHeaders, {
         'content-type': contentType,
-        authorization: auth + signature,
+        authorization: 'OSS ' + configs.accessKeyId + ':' + signature,
         date: date,
-        'cache-control': defaults.cacheControl,
-        expires: new Date(Date.now() + defaults.expires * 1000).toUTCString()
+        'cache-control': configs.cacheControl,
+        expires: new Date(Date.now() + configs.expires * 1000).toUTCString()
     });
 
     return {
         requestURL: requestURL,
         objectURL: objectURL,
-        headers: headers
+        requestHeaders: requestHeaders
     };
 };
+
 
 

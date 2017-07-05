@@ -1,7 +1,7 @@
 {
   "name": "blear.node.aliyun",
   "version": "1.0.0",
-  "description": "描述",
+  "description": "阿里云 nodeJS 接口封装",
   "scripts": {
     "live": "browser-sync start --config bs-config.js",
     "test-travis": "./node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha --report lcovonly",
@@ -41,7 +41,6 @@
     "blear.node.mime": "^1.0.1",
     "blear.utils.access": "^1.0.5",
     "blear.utils.object": "^1.0.14",
-    "blear.utils.path": "^1.0.8",
     "blear.utils.random": "^1.0.3",
     "blear.utils.typeis": "^1.0.3",
     "blear.utils.url": "^1.0.18"
