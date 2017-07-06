@@ -75,8 +75,6 @@ exports.config = function (key, val) {
  */
 exports.aliossSignature = function (configs) {
     configs = object.assign({}, defaults, configs);
-    configs.dirname = path.normalize(configs.dirname);
-    configs.filename = path.normalize(configs.filename);
 
     var date = configs.headers.date || new Date().toUTCString();
     var extname = path.extname(configs.filename);
