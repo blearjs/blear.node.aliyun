@@ -8,7 +8,7 @@
 'use strict';
 
 var crypto = require('crypto');
-var path = require('path');
+var path = require('blear.node.path');
 var random = require('blear.utils.random');
 var typeis = require('blear.utils.typeis');
 var object = require('blear.utils.object');
@@ -76,6 +76,8 @@ exports.config = function (key, val) {
  */
 exports.aliossSignature = function (configs) {
     configs = object.assign({}, defaults, configs);
+    configs.dirname = path.normalize(configs.dirname);
+    configs.filename = path.normalize(configs.filename);
 
     var date = configs.headers.date || new Date().toUTCString();
     var extname = path.extname(configs.filename);
