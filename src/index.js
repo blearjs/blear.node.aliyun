@@ -16,7 +16,6 @@ var access = require('blear.utils.access');
 var url = require('blear.utils.url');
 var mime = require('blear.node.mime');
 
-
 var defaults = {
     // 访问令牌
     accessKeyId: '',
